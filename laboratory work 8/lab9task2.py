@@ -54,7 +54,7 @@ else:
             i = 2
             while i < len(mas):
                 # Обчислення збільшення
-                increase = (mas[i-1] + mas[i-2]) * K / 100
+                increase = x(mas[i-1] + mas[i-2]) * K / 100
                 # Зміна поточного елемента масиву
                 mas[i] = mas[i] + increase
                 i = i + 1
