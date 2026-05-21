@@ -1133,7 +1133,7 @@ class ExperimentTab(tk.Frame):
         self._update_journal_title()
         msg = f"✔ Завантажено {loaded} записів з «{os.path.basename(path)}»"
         if errors:
-            msg += f"  ({errors} рядків пропущено)"
+            msg += f"  " # ({errors} рядків пропущено) пропущені рядки
         log_write(self.log, msg)
         messagebox.showinfo("Завантажено", msg)
 
@@ -1203,11 +1203,15 @@ class ExperimentTab(tk.Frame):
             # «  Прилад:   Мікрометр», «  Одиниці:  м/с», «  Назва:  ...»
             # Відповідають рядкам типу «  Ключ:  Значення» всередині звіту
             k_lower = line_s.split(":")[0].strip().lower()
-            if ":" in line_s and any(w in k_lower for w in ("назва", "прилад", "одиниці", "нотатка")):
+            if ":" in line_s and any(w in k_lower for w in ("назва", "прилад", "одиниці", "нотатка", "виконав",
+                        "дата", "кількість", "середнє", "відхил", "мін", "макс")):
                 # Ліва частина від «:» — лише текст (не число) → мета
                 k, _, v = line_s.partition(":")
                 k_lower = k.strip().lower()
-                if any(w in k_lower for w in ("назва", "прилад", "одиниці", "одиниця", "виконав")):
+                if any(w in k_lower for w in (
+                        "назва", "прилад", "одиниці", "одиниця", "виконав",
+                        "дата", "кількість", "середнє", "відхил", "мін", "макс"
+                )):
                     meta[k_lower.replace("одиниця", "одиниці")] = v.strip()
                 continue
 
@@ -1230,8 +1234,6 @@ class ExperimentTab(tk.Frame):
                     self.records.append(r)
                     row_index = len(self.journal.get_children())  # до insert
                     tag = "even" if row_index % 2 == 0 else "odd"
-                    self.records.append(r)
-                    self.journal.insert(...)
                     self.journal.insert("", "end",
                                         values=(r["num"], r["timestamp"],
                                                 f"{r['value']:.6g}", r["unit"],
@@ -2367,12 +2369,13 @@ class AboutTab(tk.Frame):
         # Список (іконка, назва вкладки, колір, опис)
         modules = [
             (
-                "📊", "Статистика", ACCENT,
-                "Статистична обробка масивів вимірювань. "
-                "Завантажуйте дані з файлу, генеруйте випадкові вибірки або вводьте "
-                "вручну. Програма обчислює середнє, стандартне відхилення, "
-                "похибку середнього та довірчий інтервал (розподіл Стьюдента). "
-                "Результат відображається на гістограмі з кривою Гаусса."
+                "🧪", "Експеримент", ACCENT,
+                "Лабораторний журнал для запису та обробки вимірювань. "
+                "Вводьте значення вручну або завантажуйте з TXT-файлу. "
+                "Програма автоматично веде журнал із часовими мітками, "
+                "обчислює експрес-аналітику (середнє, відхилення, мін/макс), "
+                "будує лінійний або стовпчастий графік із лінією середнього, "
+                "а також формує текстовий звіт із можливістю збереження та копіювання."
             ),
             (
                 "🚀", "Кінематика", GREEN,
@@ -2495,9 +2498,10 @@ class AboutTab(tk.Frame):
         guide_card.pack(fill="x", padx=20, pady=(4, 20))
 
         steps = [
-            ("1", "Статистика",
-             "Завантажте файл / введіть числа / згенеруйте вибірку → "
-             "виберіть рівень довіри → натисніть «Розрахувати»."),
+            ("1", "Експеримент",
+            "Введіть назву досліду, одиниці та прилад → додавайте виміри вручну "
+            "або завантажте TXT-файл → переглядайте графік і статистику в реальному часі → "
+            "збережіть звіт кнопкою «Зберегти TXT»."),
             ("2", "Кінематика",
              "Задайте v₀, кут, h₀, g (і опційно k, m) → «Розрахувати траєкторію» → "
              "перегляньте графіки, таблицю і аналітику у трьох підвкладках."),
@@ -2565,6 +2569,139 @@ class PhysicsLab(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_exit)
         self._build()
 
+    #================================================
+    #Вишиванкаа:
+    def _build_vyshyvanka_strip(self):
+        """
+        Малює декоративну смугу з орнаментом вишиванки між заголовком
+        і вкладками програми. Відображається ТІЛЬКИ 21 травня.
+
+        Орнамент: геометричний піксельний мотив у стилі
+        традиційної української вишивки — червоно-чорні ромби,
+        восьмипроменеві зірки, хрести, лінія меандру.
+        Патерн побудований на сітці CELL×CELL px клітинок.
+        """
+        from datetime import datetime as _dt
+        if not (_dt.now().month == 5 and _dt.now().day == 21):
+            return  # Показуємо тільки 21 травня — День вишиванки
+
+        # ── Кольори орнаменту ──────────────────────────────────────────
+        C_RED = "#c8102e"  # Традиційний червоний
+        C_BLACK = "#1a1a1a"  # Чорний (контурні деталі)
+        C_WHITE = "#f5f0e8"  # Кремовий фон (тло тканини)
+        CELL = 11  # Розмір одного пікселя орнаменту (px)
+        STRIP_H = 44  # Висота смуги в пікселях
+
+        # ── Піксельний мотив (48 символів × 9 рядків) ─────────────────
+        # R = червоний, B = чорний, . = фон
+        MOTIF = [
+            "....RRRR....RRRR....RRRR....RRRR....RRRR....RRRR",
+            "...RBBBBR..RBBBBR..RBBBBR..RBBBBR..RBBBBR..RBBBBR",
+            "..RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR",
+            ".RBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBB",
+            "RBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            ".RBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBRBBBB",
+            "..RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR.RBBBBBR",
+            "...RBBBBR..RBBBBR..RBBBBR..RBBBBR..RBBBBR..RBBBBR",
+            "....RRRR....RRRR....RRRR....RRRR....RRRR....RRRR",
+        ]
+
+        MROWS = len(MOTIF)
+        MCOLS = len(MOTIF[0])
+
+        # ── Canvas ────────────────────────────────────────────────────
+        canvas = tk.Canvas(
+            self,
+            height=STRIP_H,
+            bg=C_WHITE,
+            highlightthickness=0,
+            cursor="hand2"
+        )
+        canvas.pack(fill="x")
+
+        # Підказка при наведенні
+        tip_shown = [False]
+
+        def _show_tip(event):
+            if tip_shown[0]:
+                return
+            tip_shown[0] = True
+            tip = tk.Label(
+                self,
+                text="Щасливого Дня Вишиванки! — 21 травня ",
+                font=("Courier New", 9, "bold"),
+                bg="#c8102e", fg="#f5f0e8",
+                pady=2
+            )
+            tip.place(relx=1.0, rely=0, anchor="ne", x=-10, y=STRIP_H + 4)
+            self.after(3000, lambda: (tip.destroy(),
+                                      tip_shown.__setitem__(0, False)))
+
+        canvas.bind("<Enter>", _show_tip)
+
+        def _draw(event=None):
+            """Перемальовує орнамент при зміні розміру вікна."""
+            canvas.delete("all")
+            w = canvas.winfo_width() or self.winfo_width()
+
+            # Фонова заливка
+            canvas.create_rectangle(0, 0, w, STRIP_H,
+                                    fill=C_WHITE, outline="")
+
+            # ── Рамкові смуги зверху і знизу ─────────────────────────
+            canvas.create_rectangle(0, 0, w, 3, fill=C_BLACK, outline="")
+            canvas.create_rectangle(0, 3, w, 6, fill=C_RED, outline="")
+            canvas.create_rectangle(0, STRIP_H - 6, w, STRIP_H - 3, fill=C_RED, outline="")
+            canvas.create_rectangle(0, STRIP_H - 3, w, STRIP_H, fill=C_BLACK, outline="")
+
+            # ── Масштабування і малювання орнаменту ──────────────────
+            zone_h = STRIP_H - 12
+            zone_y = 6
+            cell = max(3, zone_h // MROWS)
+            tile_w = MCOLS * cell
+            repeats = (w // tile_w) + 2
+
+            for rep in range(repeats):
+                ox = rep * tile_w
+                for row_i, row_str in enumerate(MOTIF):
+                    y0 = zone_y + row_i * cell
+                    y1 = y0 + cell
+                    for col_i, ch in enumerate(row_str):
+                        if ch == ".":
+                            continue
+                        x0 = ox + col_i * cell
+                        x1 = x0 + cell
+                        if x0 > w:
+                            break
+                        color = C_RED if ch == "R" else C_BLACK
+                        canvas.create_rectangle(x0, y0, x1, y1,
+                                                fill=color, outline="")
+
+            # ── Восьмипроменеві зірки у проміжках між мотивами ───────
+            star_r = cell * 1.6
+            sx_offset = tile_w // 2
+            for rep in range(repeats):
+                cx = rep * tile_w + sx_offset
+                cy = zone_y + zone_h // 2
+                for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1),
+                               (1, 1), (-1, -1), (1, -1), (-1, 1)]:
+                    px0 = int(cx + dx * star_r * 0.25)
+                    py0 = int(cy + dy * star_r * 0.25)
+                    px1 = int(cx + dx * star_r)
+                    py1 = int(cy + dy * star_r)
+                    canvas.create_line(px0, py0, px1, py1,
+                                       fill=C_RED, width=max(1, cell // 3))
+                canvas.create_oval(
+                    cx - cell // 2, cy - cell // 2,
+                    cx + cell // 2, cy + cell // 2,
+                    fill=C_BLACK, outline=""
+                )
+
+        canvas.bind("<Configure>", _draw)
+        self.after(50, _draw)  # перший виклик після отримання реального розміру
+
+    #====================================================================
+
     def _on_exit(self):
         """
         Викликається при натисканні кнопки ✕ або 🚪 Вихід.
@@ -2618,6 +2755,7 @@ class PhysicsLab(tk.Tk):
 
         # Горизонтальний роздільник між заголовком і вкладками
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+        self._build_vyshyvanka_strip()
 
         # ── Notebook — 5 вкладок ────────────────────────────────────────
         style = ttk.Style(self)
